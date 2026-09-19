@@ -5,6 +5,7 @@
 help:
 	@echo "nikednep"
 	@echo "  make install           Install dependencies"
+	@echo "  make config            Create wrangler.toml from the example"
 	@echo "  make create-resources  Create the D1 database and KV namespace (wrangler)"
 	@echo "  make tf-apply          Create them with Terraform instead"
 	@echo "  make migrate-local     Apply migrations to the local D1"
@@ -21,27 +22,34 @@ help:
 install:
 	npm install
 
+config: wrangler.toml
+
+wrangler.toml:
+	@cp wrangler.toml.example wrangler.toml
+	@echo "Created wrangler.toml from wrangler.toml.example."
+	@echo "Fill in database_id and the KV id, then re-run your command."
+
 create-resources:
 	npx wrangler d1 create nikednep
 	npx wrangler kv namespace create LINKS_CACHE
 	@echo "Copy the printed ids into wrangler.toml."
 
-migrate-local:
+migrate-local: wrangler.toml
 	npx wrangler d1 migrations apply nikednep --local
 
-migrate-remote:
+migrate-remote: wrangler.toml
 	npx wrangler d1 migrations apply nikednep --remote
 
-dev:
+dev: wrangler.toml
 	npx wrangler dev --port 8081
 
 typecheck:
 	npx tsc --noEmit
 
-deploy:
+deploy: wrangler.toml
 	npx wrangler deploy
 
-tail:
+tail: wrangler.toml
 	npx wrangler tail
 
 health:

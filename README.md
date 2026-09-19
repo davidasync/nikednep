@@ -29,7 +29,7 @@ src/
   adapter/nanoid/
   app/http/                 router, handlers, JSON DTOs
 migrations/                 0001 links table, 0002 counter + triggers
-wrangler.toml               D1, KV, and rate limit bindings
+wrangler.toml.example       template; copy to wrangler.toml and fill in ids
 terraform/                  D1 + KV as code (optional; script stays on wrangler)
 ```
 
@@ -64,9 +64,14 @@ Rate limit: **20 creates per IP per minute**, via Cloudflare's rate limiting bin
 
 ```bash
 make install
+make config         # copies wrangler.toml.example -> wrangler.toml
 make migrate-local
 make dev            # http://localhost:8081
 ```
+
+`wrangler.toml` holds your own D1 and KV ids and is gitignored; only
+`wrangler.toml.example` is tracked. The `make` targets that need it will create
+it from the example on first run, and never overwrite one that already exists.
 
 `wrangler dev` simulates D1 and KV on disk under `.wrangler/`, so nothing touches
 your account and no Docker or emulator is needed.
@@ -96,7 +101,8 @@ export CLOUDFLARE_API_TOKEN=... CLOUDFLARE_ACCOUNT_ID=...
 make tf-init && make tf-apply
 ```
 
-Paste the printed `database_id` and KV `id` into `wrangler.toml`, then:
+Paste the printed `database_id` and KV `id` into your `wrangler.toml` (not the
+example file — that one keeps the placeholders), then:
 
 ```bash
 make migrate-remote
