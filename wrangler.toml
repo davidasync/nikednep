@@ -1,0 +1,30 @@
+name = "nikednep"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+# Short links are served straight off workers.dev. To use your own domain, add it
+# to Cloudflare and uncomment:
+# routes = [{ pattern = "nkd.example.com", custom_domain = true }]
+
+# Source of truth. Create with: wrangler d1 create nikednep
+[[d1_databases]]
+binding = "DB"
+database_name = "nikednep"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+# Read cache in front of D1, so hot redirects never leave the edge.
+# Create with: wrangler kv namespace create LINKS_CACHE
+[[kv_namespaces]]
+binding = "LINKS_CACHE"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+# 20 creates per IP per minute. Free on every plan and costs no KV or D1 writes.
+[[unsafe.bindings]]
+name = "RATE_LIMITER"
+type = "ratelimit"
+namespace_id = "1001"
+simple = { limit = 20, period = 60 }
+
+[observability]
+enabled = true

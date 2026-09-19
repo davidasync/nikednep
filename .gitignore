@@ -1,0 +1,13 @@
+.idea/
+.vscode/
+node_modules/
+.wrangler/
+dist/
+.dev.vars
+.env
+
+# Terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+*.tfvars
