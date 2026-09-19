@@ -1,4 +1,4 @@
-import type { Link } from "../../core/shortener/entity";
+import { MAX_TTL_SECONDS, type Link } from "../../core/shortener/entity";
 import type { LinkRepository } from "../../core/shortener/ports";
 
 interface CachedLink {
@@ -46,15 +46,29 @@ export function withKVCache(inner: LinkRepository, kv: KVNamespace): LinkReposit
       await Promise.all(evicted.map((code) => kv.delete(code)));
       return evicted;
     },
+
+    deleteExpired(now: Date, limit: number): Promise<string[]> {
+      // Deliberately no cache invalidation. Every entry is written with an
+      // expirationTtl equal to the link's own remaining life, so KV has already
+      // dropped these keys by the time they are purgeable here. Deleting them
+      // again would spend the 1,000/day free KV write budget on no-ops.
+      return inner.deleteExpired(now, limit);
+    },
   };
 }
 
 async function writeThrough(kv: KVNamespace, link: Link): Promise<void> {
-  const ttlSeconds = Math.floor((link.expireAt.getTime() - Date.now()) / 1000);
+  const remaining = Math.floor((link.expireAt.getTime() - Date.now()) / 1000);
   // KV rejects a TTL under 60s; such a link is near death anyway, so skip caching it.
-  if (ttlSeconds < 60) {
+  if (remaining < 60) {
     return;
   }
+  // KV takes expirationTtl as a 32-bit int and throws outside that range. A row
+  // written through the API can never exceed MAX_TTL_SECONDS, but one inserted
+  // out of band can, and an unclamped value would make every read of that link
+  // throw. Clamping only ever shortens the cache entry, so it still cannot
+  // outlive the link it describes.
+  const ttlSeconds = Math.min(remaining, MAX_TTL_SECONDS);
   const value: CachedLink = {
     url: link.url,
     createdAt: link.createdAt.getTime(),

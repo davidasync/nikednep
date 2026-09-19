@@ -26,5 +26,11 @@ type = "ratelimit"
 namespace_id = "1001"
 simple = { limit = 20, period = 60 }
 
+# Hourly sweep of expired links. Cron Triggers are free (5 per account on the
+# free plan); the handler is a single indexed DELETE, so it stays well inside
+# the 10ms CPU budget.
+[triggers]
+crons = ["0 * * * *"]
+
 [observability]
 enabled = true

@@ -19,7 +19,7 @@ HTTP (Hono)  →  core shortener service  →  ports  →  KV cache → D1 / rat
 
 ```
 src/
-  index.ts                  Worker fetch entry
+  index.ts                  Worker fetch entry + scheduled cleanup
   container.ts              wires ports to adapters
   core/shortener/           entity, errors, ports, service
   adapter/d1/               LinkRepository over SQLite
@@ -28,7 +28,7 @@ src/
   adapter/clock/
   adapter/nanoid/
   app/http/                 router, handlers, JSON DTOs
-migrations/                 0001 links table, 0002 counter + triggers
+migrations/                 0001 links, 0002 counter + triggers, 0003 expiry index
 wrangler.toml.example       template; copy to wrangler.toml and fill in ids
 terraform/                  D1 + KV as code (optional; script stays on wrangler)
 ```
@@ -52,6 +52,8 @@ eviction deletes with `RETURNING code` so the cache is invalidated with the rows
 `code` optional: 3–32 letters or digits. Omit to generate a 7-character nanoid. Reserved: `api`, `health`.
 
 `ttlSeconds` optional: default **604800** (7 days), max **31536000** (1 year).
+Expired links stop resolving immediately and their rows are swept hourly; see
+[Expiry](#expiry).
 
 Errors: `400` bad input, `409` `{ "error": "code already exists" }`, `429` `{ "error": "rate limited" }`, `404` `{ "error": "not found" }` or `{ "error": "expired" }`.
 
@@ -130,6 +132,33 @@ than breaking.
 Nothing here can bill you: the Workers Free plan has no billing attached, so
 exceeding a limit returns errors until the 00:00 UTC reset rather than charging
 overage. Overage pricing applies only after an explicit upgrade to Workers Paid.
+
+### Expiry
+
+Two mechanisms, because the two stores behave differently.
+
+**KV** entries are written with `expirationTtl` set to the link's own remaining
+life, so Cloudflare drops them on its own. Nothing of ours runs, and a cache entry
+can never outlive the link it caches.
+
+**D1** has no such thing, so expiry there is enforced on read: `resolve` checks the
+timestamp and returns `404`. That alone leaves the rows in place, where they hold
+storage and count against the 50,000 cap. Worse, FIFO eviction orders by
+`created_at`, so at the cap it would drop a live link while keeping an expired one
+created more recently.
+
+An hourly Cron Trigger closes that gap. `scheduled` in `src/index.ts` calls
+`purgeExpired`, which deletes in batches of `PURGE_BATCH` through an indexed range
+seek:
+
+```
+SEARCH links USING INDEX idx_links_expire_at (expire_at>? AND expire_at<?)
+```
+
+The delete triggers from `0002` keep the counter right, so the cap reflects only
+live links. The purge deliberately does not touch KV: those entries have already
+expired on their own TTL, and deleting them would spend the 1,000/day free write
+budget on no-ops. Cron Triggers are free (5 per account on the free plan).
 
 ### Why the link count lives in its own table
 

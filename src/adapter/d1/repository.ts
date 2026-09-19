@@ -60,6 +60,25 @@ export function newRepository(db: D1Database): LinkRepository {
         .all<{ code: string }>();
       return result.results.map((row) => row.code);
     },
+
+    async deleteExpired(now: Date, limit: number): Promise<string[]> {
+      if (limit <= 0) {
+        return [];
+      }
+      // `expire_at > 0` mirrors isExpired(), which treats a zero timestamp as
+      // "never expires" rather than "expired in 1970".
+      const result = await db
+        .prepare(
+          `DELETE FROM links WHERE code IN (
+             SELECT code FROM links
+             WHERE expire_at > 0 AND expire_at <= ?
+             ORDER BY expire_at ASC LIMIT ?
+           ) RETURNING code`,
+        )
+        .bind(now.getTime(), limit)
+        .all<{ code: string }>();
+      return result.results.map((row) => row.code);
+    },
   };
 }
 

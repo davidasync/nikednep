@@ -3,6 +3,7 @@ import {
   MAX_CODE_RETRIES,
   MAX_LINKS,
   MAX_TTL_SECONDS,
+  PURGE_BATCH,
   isExpired,
   type ShortenCommand,
   type ShortenResult,
@@ -27,6 +28,8 @@ const RESERVED_CODES = new Set(["api", "health"]);
 export interface Service {
   shorten(cmd: ShortenCommand): Promise<ShortenResult>;
   resolve(code: string): Promise<string>;
+  /** Removes links whose TTL has run out. Returns how many went. */
+  purgeExpired(): Promise<number>;
 }
 
 export function newService(
@@ -65,6 +68,14 @@ export function newService(
         throw ErrExpired();
       }
       return link.url;
+    },
+
+    async purgeExpired(): Promise<number> {
+      // Expiry is only ever checked on read, so without this the rows linger:
+      // they hold storage and count against MAX_LINKS, and FIFO eviction orders
+      // by createdAt, which can drop a live link while keeping a dead one.
+      const purged = await links.deleteExpired(clock.now(), PURGE_BATCH);
+      return purged.length;
     },
   };
 }

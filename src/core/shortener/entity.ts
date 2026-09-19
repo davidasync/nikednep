@@ -5,6 +5,9 @@ export const GENERATED_CODE_LEN = 7;
 export const MIN_CUSTOM_CODE_LEN = 3;
 export const MAX_CUSTOM_CODE_LEN = 32;
 export const MAX_CODE_RETRIES = 5;
+/** Upper bound on one cleanup run, so a large backlog drains over several ticks
+ * instead of issuing one unbounded DELETE. */
+export const PURGE_BATCH = 1_000;
 
 export interface Link {
   code: string;
