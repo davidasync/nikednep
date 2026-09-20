@@ -4,8 +4,10 @@ import { ShortenerError, type ErrorKind } from "../../core/shortener/errors";
 import type { Service } from "../../core/shortener/service";
 import type { ErrorResponse, HealthResponse, ShortenRequest, ShortenResponse } from "./dto";
 
-const STATUS_BY_KIND: Record<ErrorKind, 400 | 404 | 409 | 429> = {
+const STATUS_BY_KIND: Record<ErrorKind, 400 | 404 | 409 | 414 | 429> = {
   invalid_url: 400,
+  // RFC 9110 defines 414 for a URI the server declines to process by length.
+  url_too_long: 414,
   invalid_ttl: 400,
   invalid_code: 400,
   reserved_code: 400,
@@ -78,7 +80,7 @@ function mapError(c: Context, err: unknown): Response {
   return error(c, 500, "internal error");
 }
 
-function error(c: Context, status: 400 | 404 | 409 | 429 | 500, message: string): Response {
+function error(c: Context, status: 400 | 404 | 409 | 414 | 429 | 500, message: string): Response {
   return c.json<ErrorResponse>({ error: message }, status);
 }
 

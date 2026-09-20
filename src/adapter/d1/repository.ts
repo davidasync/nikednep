@@ -30,36 +30,7 @@ export function newRepository(db: D1Database): LinkRepository {
         .run();
     },
 
-    async count(): Promise<number> {
-      // One row read, whatever the table size. link_count is kept exact by the
-      // triggers in migrations/0002_link_count.sql; a COUNT(*) here would scan
-      // every link on every write and exhaust D1's free row-read quota.
-      const row = await db.prepare("SELECT n FROM link_count WHERE id = 1").first<{ n: number }>();
-      if (row !== null) {
-        return row.n;
-      }
-      // Counter row missing rather than merely stale: rebuild it from a scan once
-      // so a half-applied migration heals instead of silently disabling eviction.
-      const scanned = await db.prepare("SELECT COUNT(*) AS n FROM links").first<{ n: number }>();
-      const n = scanned?.n ?? 0;
-      await db.prepare("INSERT OR REPLACE INTO link_count (id, n) VALUES (1, ?)").bind(n).run();
-      return n;
-    },
 
-    async deleteOldest(n: number, exceptCode: string): Promise<string[]> {
-      if (n <= 0) {
-        return [];
-      }
-      const result = await db
-        .prepare(
-          `DELETE FROM links WHERE code IN (
-             SELECT code FROM links WHERE code != ? ORDER BY created_at ASC LIMIT ?
-           ) RETURNING code`,
-        )
-        .bind(exceptCode, n)
-        .all<{ code: string }>();
-      return result.results.map((row) => row.code);
-    },
 
     async deleteExpired(now: Date, limit: number): Promise<string[]> {
       if (limit <= 0) {

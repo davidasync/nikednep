@@ -1,8 +1,8 @@
 import {
   DEFAULT_TTL_SECONDS,
   MAX_CODE_RETRIES,
-  MAX_LINKS,
   MAX_TTL_SECONDS,
+  MAX_URL_LENGTH,
   PURGE_BATCH,
   isExpired,
   type ShortenCommand,
@@ -15,6 +15,7 @@ import {
   ErrInvalidCode,
   ErrInvalidTTL,
   ErrInvalidURL,
+  ErrUrlTooLong,
   ErrNotFound,
   ErrReservedCode,
   ErrRateLimited,
@@ -53,7 +54,6 @@ export function newService(
       const code = await assignCode(links, codes, cmd.code, now);
 
       await links.put({ code, url: dest, createdAt: now, expireAt });
-      await evictIfNeeded(links, code);
 
       const scheme = cmd.scheme || "http";
       return { code, shortUrl: `${scheme}://${cmd.host}/${code}`, expireAt };
@@ -71,9 +71,8 @@ export function newService(
     },
 
     async purgeExpired(): Promise<number> {
-      // Expiry is only ever checked on read, so without this the rows linger:
-      // they hold storage and count against MAX_LINKS, and FIFO eviction orders
-      // by createdAt, which can drop a live link while keeping a dead one.
+      // Expiry is only ever checked on read, so without this the rows linger
+      // and hold storage indefinitely. Nothing else reclaims them.
       const purged = await links.deleteExpired(clock.now(), PURGE_BATCH);
       return purged.length;
     },
@@ -109,19 +108,16 @@ async function assignCode(
   throw ErrConflict();
 }
 
-async function evictIfNeeded(links: LinkRepository, exceptCode: string): Promise<void> {
-  const n = await links.count();
-  const overflow = n - MAX_LINKS;
-  if (overflow <= 0) {
-    return;
-  }
-  await links.deleteOldest(overflow, exceptCode);
-}
 
 function validateURL(raw: string): string {
   const trimmed = raw.trim();
   if (trimmed === "") {
     throw ErrInvalidURL();
+  }
+  // Checked before parsing so an oversized string is rejected cheaply, and
+  // reported distinctly: it is a well-formed URL we decline, not a malformed one.
+  if (trimmed.length > MAX_URL_LENGTH) {
+    throw ErrUrlTooLong();
   }
   let parsed: URL;
   try {

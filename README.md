@@ -28,7 +28,7 @@ src/
   adapter/clock/
   adapter/nanoid/
   app/http/                 router, handlers, JSON DTOs
-migrations/                 0001 links, 0002 counter + triggers, 0003 expiry index
+migrations/                 0001 links, 0003 expiry index, 0004 drops 0002's counter
 wrangler.toml.example       template; copy to wrangler.toml and fill in ids
 terraform/                  D1 + KV as code (optional; script stays on wrangler)
 ```
@@ -51,11 +51,13 @@ eviction deletes with `RETURNING code` so the cache is invalidated with the rows
 
 `code` optional: 3–32 letters or digits. Omit to generate a 7-character nanoid. Reserved: `api`, `health`.
 
+`url` must be at most **8192** characters; longer returns `414`.
+
 `ttlSeconds` optional: default **604800** (7 days), max **31536000** (1 year).
 Expired links stop resolving immediately and their rows are swept hourly; see
 [Expiry](#expiry).
 
-Errors: `400` bad input, `409` `{ "error": "code already exists" }`, `429` `{ "error": "rate limited" }`, `404` `{ "error": "not found" }` or `{ "error": "expired" }`.
+Errors: `400` bad input, `409` `{ "error": "code already exists" }`, `414` url too long, `429` `{ "error": "rate limited" }`, `404` `{ "error": "not found" }` or `{ "error": "expired" }`.
 
 Capacity: at most **50,000** links; oldest by `created_at` are deleted when over the cap.
 The cap is checked against a trigger-maintained counter, not `COUNT(*)` — see below.
@@ -160,23 +162,23 @@ live links. The purge deliberately does not touch KV: those entries have already
 expired on their own TTL, and deleting them would spend the 1,000/day free write
 budget on no-ops. Cron Triggers are free (5 per account on the free plan).
 
-### Why the link count lives in its own table
+### What bounds storage
 
-D1 meters rows *scanned*, not rows returned, so `SELECT COUNT(*) FROM links` costs
-one row read per stored link. Checking the 50,000 cap on every write that way cost
-~50,000 reads per create at capacity, which exhausts the 5M/day free allowance in
-about 100 creates. `migrations/0002_link_count.sql` keeps a running total in a
-one-row table maintained by insert and delete triggers, so the check is a single
-primary-key lookup no matter how many links are stored:
+There is no cap on the number of links. An earlier 50,000 limit with FIFO
+eviction came from the Firestore build's much smaller free tier; on D1 that is
+0.16% of the 5 GB allowance, and because eviction ordered by `created_at` it
+deleted live links to make room. Once the hourly purge removed expired rows,
+everything at the cap was by definition still alive, so eviction had nothing
+left to reclaim and only destroyed working links.
 
-```
-SELECT COUNT(*) FROM links          SCAN links USING COVERING INDEX ...
-SELECT n FROM link_count WHERE id=1 SEARCH link_count USING INTEGER PRIMARY KEY
-```
+Storage is bounded by `MAX_URL_LENGTH` instead, which caps what one link can
+cost rather than how many may exist. Row count then finds its own steady state:
+links expire, the purge reclaims them, and the table settles at roughly the
+creation rate times the average TTL.
 
-Triggers keep the total exact without the application tracking it. An upsert that
-replaces an existing code fires UPDATE rather than INSERT, so re-pointing a link
-does not inflate the count.
+Dropping the cap removed its whole supporting cast — `count()`, `deleteOldest()`,
+and the trigger-maintained counter table that existed only to make the cap check
+cheap. `0004` drops what `0002` created.
 
 ## Bindings
 

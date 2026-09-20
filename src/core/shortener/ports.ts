@@ -4,9 +4,6 @@ export interface LinkRepository {
   /** Resolves to null when the code is unknown. */
   get(code: string): Promise<Link | null>;
   put(link: Link): Promise<void>;
-  count(): Promise<number>;
-  /** Deletes the n oldest links by createdAt, never touching exceptCode. Returns the codes deleted. */
-  deleteOldest(n: number, exceptCode: string): Promise<string[]>;
   /** Deletes up to `limit` links that expired at or before `now`. Returns the codes deleted. */
   deleteExpired(now: Date, limit: number): Promise<string[]>;
 }

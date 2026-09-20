@@ -1,3 +1,5 @@
+import { MAX_URL_LENGTH } from "./entity";
+
 export class ShortenerError extends Error {
   constructor(
     readonly kind: ErrorKind,
@@ -10,6 +12,7 @@ export class ShortenerError extends Error {
 
 export type ErrorKind =
   | "invalid_url"
+  | "url_too_long"
   | "invalid_ttl"
   | "invalid_code"
   | "reserved_code"
@@ -21,6 +24,8 @@ export type ErrorKind =
 
 export const ErrInvalidURL = () =>
   new ShortenerError("invalid_url", "url must be an absolute http or https address");
+export const ErrUrlTooLong = () =>
+  new ShortenerError("url_too_long", `url must be at most ${MAX_URL_LENGTH} characters`);
 export const ErrInvalidTTL = () =>
   new ShortenerError("invalid_ttl", "ttlSeconds must be an integer greater than 0 and at most 31536000");
 export const ErrInvalidCode = () =>

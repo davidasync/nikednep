@@ -37,15 +37,7 @@ export function withKVCache(inner: LinkRepository, kv: KVNamespace): LinkReposit
       await writeThrough(kv, link);
     },
 
-    count(): Promise<number> {
-      return inner.count();
-    },
 
-    async deleteOldest(n: number, exceptCode: string): Promise<string[]> {
-      const evicted = await inner.deleteOldest(n, exceptCode);
-      await Promise.all(evicted.map((code) => kv.delete(code)));
-      return evicted;
-    },
 
     deleteExpired(now: Date, limit: number): Promise<string[]> {
       // Deliberately no cache invalidation. Every entry is written with an
