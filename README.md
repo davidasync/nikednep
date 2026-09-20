@@ -143,6 +143,8 @@ and hands it back; it decides nothing about validity.
 KV deletes keys on its own, and that is the whole mechanism. Nothing re-reads `expireAt`:
 a link resolves for exactly as long as KV keeps its key, and 404s once KV drops it. There
 is no sweep, no cron and no index — none of the cleanup a SQL store would need exists here.
+`wrangler.toml` carries `crons = []` rather than simply omitting the block, because
+Cloudflare leaves a previously deployed trigger running when the property is absent.
 
 The cost is that KV's limits become the link's limits.
 

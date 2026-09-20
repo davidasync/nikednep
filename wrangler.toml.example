@@ -25,5 +25,11 @@ type = "ratelimit"
 namespace_id = "1001"
 simple = { limit = 20, period = 60 }
 
+# Explicitly empty, not merely absent. Omitting this leaves any previously
+# deployed Cron Trigger running on Cloudflare, and there is no scheduled()
+# handler left to answer it. Safe to delete once a deploy has cleared it.
+[triggers]
+crons = []
+
 [observability]
 enabled = true
