@@ -1,9 +1,9 @@
 import type { Link } from "./entity";
 
 /**
- * Storage only has to hold a link under its code and hand it back. Expiry is not
- * its concern: the core decides what counts as expired, and the store is free to
- * reclaim keys on its own schedule.
+ * Storage only has to hold a link under its code and hand it back. Expiry is the
+ * store's alone: it is asked to keep a link until `expireAt` and the core never
+ * re-checks, so a link exists exactly as long as the store keeps it.
  */
 export interface LinkRepository {
   /** Resolves to null when the code is unknown. */
