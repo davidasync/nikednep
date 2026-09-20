@@ -128,7 +128,10 @@ function validateURL(raw: string): string {
   if (scheme !== "http:" && scheme !== "https:") {
     throw ErrInvalidURL();
   }
-  return trimmed;
+  // The parsed form, not the raw input: the URL parser strips CR, LF and tab
+  // silently, so a string that parses clean can still carry them into the
+  // `Location` header, where the runtime rejects it and the link 500s forever.
+  return parsed.href;
 }
 
 function validateCustomCode(code: string): void {

@@ -96,7 +96,7 @@ Every error responds with `{ "error": "<message>" }`.
 
 | Status | When |
 | --- | --- |
-| `400` | `url`, `code`, or `ttlSeconds` failed validation, or the code is reserved |
+| `400` | `url`, `code`, or `ttlSeconds` failed validation, the code is reserved, or the body is not valid JSON |
 | `404` | no link for that code — never created, or already expired |
 | `409` | `code already exists` |
 | `414` | `url` longer than 8192 characters |

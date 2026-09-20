@@ -11,6 +11,7 @@ export class ShortenerError extends Error {
 }
 
 export type ErrorKind =
+  | "invalid_body"
   | "invalid_url"
   | "url_too_long"
   | "invalid_ttl"
@@ -21,6 +22,8 @@ export type ErrorKind =
   | "rate_limited"
   | "storage_unavailable";
 
+export const ErrInvalidBody = () =>
+  new ShortenerError("invalid_body", "body must be valid JSON");
 export const ErrInvalidURL = () =>
   new ShortenerError("invalid_url", "url must be an absolute http or https address");
 export const ErrUrlTooLong = () =>
