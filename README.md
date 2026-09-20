@@ -18,38 +18,11 @@
 
 ## Why "nikednep"
 
-`pendekin` backwards. *Pendek* is Indonesian for short, and the casual `-in` suffix turns
-it into an imperative: **"shorten it."** Not the formal *perpendek* — this is how you would
-ask a friend, which is about the right register for a service with three routes.
+`pendekin` backwards — Indonesian for "shorten it", in the casual register you would use
+with a friend rather than the formal *perpendek*.
 
 The name also does its own job: `pendekin` → `nikednep` is a short, opaque, reversible
 encoding of something meaningful, which is exactly what a short code is.
-
-**The name is the spec.** One verb, one thing. Create, resolve, health — and only one of
-those is real work. No UI, no login, no analytics, no dashboard, no custom domains. When
-the scope is a single imperative, most feature requests answer themselves.
-
-**Subtraction is the method.** Read `git log` in order and the codebase gets smaller on
-purpose: an hourly cron sweeper, built and then deleted; D1, adopted and then dropped;
-migrations, squashed and then gone along with the schema. What is left is ~600 lines of
-TypeScript and one KV namespace.
-
-**Never re-implement the platform underneath you.** Nothing here re-reads `expireAt` — KV
-decides when a link dies and the code holds no second opinion. Generated codes are not
-read before writing, because that check would cache the miss that causes the `404` it was
-meant to prevent. See [Expiry](#expiry).
-
-**Pay the honesty tax out loud.** Simplicity this aggressive is bought with real
-guarantees. The ones given up here are written down in [Expiry](#expiry) and
-[Consistency](#consistency) rather than discovered in production.
-
-**Cost nothing, so it can be forgotten.** No billing is attached, so crossing a limit
-returns an error and never an invoice. Storage is bounded by URL length rather than
-policed by a link cap: the worst case is structurally small instead of enforced.
-
-**The one thing not minimized is structure.** Hexagonal layering for ~600 lines looks like
-over-engineering until you notice it is what kept the subtraction cheap — dropping D1
-touched an adapter, not the logic.
 
 ## Quick start
 
