@@ -36,24 +36,51 @@ code and hands it back; it decides nothing about validity.
 
 ## API
 
-| Method | Path | Body | Success |
-| --- | --- | --- | --- |
-| POST | `/api/shorten` | `{ "url", "code?", "ttlSeconds?" }` | `201` `{ "code", "shortUrl", "expireAt" }` |
-| GET | `/:code` | — | `302` to the stored URL |
-| GET | `/health` | — | `200` `{ "ok": true }` |
-
-`code` optional: 3–32 letters or digits. Omit to generate a 7-character nanoid. Reserved: `api`, `health`.
-
-`url` must be at most **8192** characters; longer returns `414`.
-
-`ttlSeconds` optional: default **604800** (7 days), max **31536000** (1 year).
-Values below 60 are accepted but effectively become 60 — see [Expiry](#expiry).
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/shorten` | create a short link |
+| `GET` | `/:code` | `302` redirect to the stored URL |
+| `GET` | `/health` | liveness check — `200` `{ "ok": true }` |
 
 Rate limit: **20 creates per IP per minute**, via Cloudflare's rate limiting binding.
 
-Errors: `400` bad input, `409` `{ "error": "code already exists" }`, `414` url too long,
-`429` `{ "error": "rate limited" }`, `404` `{ "error": "not found" }`,
-`503` `{ "error": "could not store link, try again later" }` when the store refuses a write.
+### Create a link
+
+```http
+POST /api/shorten
+Content-Type: application/json
+
+{ "url": "https://example.com/a/very/long/path", "code": "docs", "ttlSeconds": 86400 }
+```
+
+```http
+201 Created
+
+{
+  "code": "docs",
+  "shortUrl": "https://short.example/docs",
+  "expireAt": "2026-09-21T09:00:00.000Z"
+}
+```
+
+| Field | Required | Rules |
+| --- | --- | --- |
+| `url` | yes | absolute `http`/`https`, at most **8192** characters |
+| `code` | no | 3–32 letters or digits. Omit it to get a 7-character nanoid. `api` and `health` are reserved |
+| `ttlSeconds` | no | default **604800** (7 days), max **31536000** (1 year). Below 60 is accepted but effectively becomes 60 — see [Expiry](#expiry) |
+
+### Errors
+
+Every error responds with `{ "error": "<message>" }`.
+
+| Status | When |
+| --- | --- |
+| `400` | `url`, `code`, or `ttlSeconds` failed validation, or the code is reserved |
+| `404` | no link for that code — never created, or already expired |
+| `409` | `code already exists` |
+| `414` | `url` longer than 8192 characters |
+| `429` | over the rate limit — `rate limited` |
+| `503` | `could not store link, try again later` — the store refused the write |
 
 ## Expiry
 
