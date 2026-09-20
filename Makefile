@@ -1,4 +1,4 @@
-.PHONY: help install dev deploy typecheck migrate-local migrate-remote health curl tail create-resources tf-init tf-plan tf-apply tf-destroy check-cf-env
+.PHONY: help install dev deploy typecheck health curl tail create-resources tf-init tf-plan tf-apply tf-destroy check-cf-env
 
 .DEFAULT_GOAL := help
 
@@ -6,10 +6,8 @@ help:
 	@echo "nikednep"
 	@echo "  make install           Install dependencies"
 	@echo "  make config            Create wrangler.toml from the example"
-	@echo "  make create-resources  Create the D1 database and KV namespace (wrangler)"
-	@echo "  make tf-apply          Create them with Terraform instead"
-	@echo "  make migrate-local     Apply migrations to the local D1"
-	@echo "  make migrate-remote    Apply migrations to the deployed D1"
+	@echo "  make create-resources  Create the KV namespace (wrangler)"
+	@echo "  make tf-apply          Create it with Terraform instead"
 	@echo "  make dev               Run the Worker locally on :8081"
 	@echo "  make typecheck         tsc --noEmit"
 	@echo "  make deploy            Publish to Cloudflare"
@@ -27,18 +25,11 @@ config: wrangler.toml
 wrangler.toml:
 	@cp wrangler.toml.example wrangler.toml
 	@echo "Created wrangler.toml from wrangler.toml.example."
-	@echo "Fill in database_id and the KV id, then re-run your command."
+	@echo "Fill in the KV namespace id, then re-run your command."
 
 create-resources:
-	npx wrangler d1 create nikednep
-	npx wrangler kv namespace create LINKS_CACHE
-	@echo "Copy the printed ids into wrangler.toml."
-
-migrate-local: wrangler.toml
-	npx wrangler d1 migrations apply nikednep --local
-
-migrate-remote: wrangler.toml
-	npx wrangler d1 migrations apply nikednep --remote
+	npx wrangler kv namespace create LINKS
+	@echo "Copy the printed id into wrangler.toml."
 
 dev: wrangler.toml
 	npx wrangler dev --port 8081

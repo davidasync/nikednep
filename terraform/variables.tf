@@ -4,7 +4,7 @@ variable "cloudflare_account_id" {
 }
 
 variable "project_name" {
-  description = "Base name for the D1 database, KV namespace, and Worker. Must match wrangler.toml's `name`."
+  description = "Base name for the KV namespace and Worker. Must match wrangler.toml's `name`."
   type        = string
   default     = "nikednep"
 }

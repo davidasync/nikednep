@@ -4,8 +4,7 @@ import type { Service } from "../../core/shortener/service";
 import { newHandler } from "./handler";
 
 export interface Env {
-  DB: D1Database;
-  LINKS_CACHE: KVNamespace;
+  LINKS: KVNamespace;
   RATE_LIMITER?: { limit(options: { key: string }): Promise<{ success: boolean }> };
 }
 

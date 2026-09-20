@@ -4,7 +4,7 @@ import { ShortenerError, type ErrorKind } from "../../core/shortener/errors";
 import type { Service } from "../../core/shortener/service";
 import type { ErrorResponse, HealthResponse, ShortenRequest, ShortenResponse } from "./dto";
 
-const STATUS_BY_KIND: Record<ErrorKind, 400 | 404 | 409 | 414 | 429> = {
+const STATUS_BY_KIND: Record<ErrorKind, 400 | 404 | 409 | 414 | 429 | 503> = {
   invalid_url: 400,
   // RFC 9110 defines 414 for a URI the server declines to process by length.
   url_too_long: 414,
@@ -15,7 +15,7 @@ const STATUS_BY_KIND: Record<ErrorKind, 400 | 404 | 409 | 414 | 429> = {
   not_found: 404,
   expired: 404,
   rate_limited: 429,
-  generate_code: 400,
+  storage_unavailable: 503,
 };
 
 export interface Handler {
@@ -80,7 +80,11 @@ function mapError(c: Context, err: unknown): Response {
   return error(c, 500, "internal error");
 }
 
-function error(c: Context, status: 400 | 404 | 409 | 414 | 429 | 500, message: string): Response {
+function error(
+  c: Context,
+  status: 400 | 404 | 409 | 414 | 429 | 500 | 503,
+  message: string,
+): Response {
   return c.json<ErrorResponse>({ error: message }, status);
 }
 

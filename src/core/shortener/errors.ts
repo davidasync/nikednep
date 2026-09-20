@@ -20,7 +20,7 @@ export type ErrorKind =
   | "not_found"
   | "expired"
   | "rate_limited"
-  | "generate_code";
+  | "storage_unavailable";
 
 export const ErrInvalidURL = () =>
   new ShortenerError("invalid_url", "url must be an absolute http or https address");
@@ -35,8 +35,10 @@ export const ErrConflict = () => new ShortenerError("conflict", "code already ex
 export const ErrNotFound = () => new ShortenerError("not_found", "not found");
 export const ErrExpired = () => new ShortenerError("expired", "expired");
 export const ErrRateLimited = () => new ShortenerError("rate_limited", "rate limited");
-export const ErrGenerateCode = () =>
-  new ShortenerError("generate_code", "could not generate a unique code");
+/** The store refused the write, so the link does not exist. Distinct from a bug:
+ * the daily write quota running out is the expected cause, and it resets. */
+export const ErrStorageUnavailable = () =>
+  new ShortenerError("storage_unavailable", "could not store link, try again later");
 
 export function isKind(err: unknown, kind: ErrorKind): boolean {
   return err instanceof ShortenerError && err.kind === kind;

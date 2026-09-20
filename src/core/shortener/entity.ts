@@ -6,12 +6,6 @@ export const MAX_TTL_SECONDS = 365 * 24 * 60 * 60;
  * rejects legitimate signed and OAuth URLs. Measured in characters. */
 export const MAX_URL_LENGTH = 8192;
 export const GENERATED_CODE_LEN = 7;
-export const MIN_CUSTOM_CODE_LEN = 3;
-export const MAX_CUSTOM_CODE_LEN = 32;
-export const MAX_CODE_RETRIES = 5;
-/** Upper bound on one cleanup run, so a large backlog drains over several ticks
- * instead of issuing one unbounded DELETE. */
-export const PURGE_BATCH = 1_000;
 
 export interface Link {
   code: string;
@@ -20,8 +14,15 @@ export interface Link {
   expireAt: Date;
 }
 
+/**
+ * Every link has a real expiry. There is deliberately no "never expires"
+ * sentinel: KV cannot represent one — a key written without a TTL would outlive
+ * the store's own cleanup — and no API path could ever produce it, since
+ * resolveTTL demands a positive TTL. A sentinel the only adapter cannot express
+ * is worse than no sentinel at all.
+ */
 export function isExpired(link: Link, now: Date): boolean {
-  return link.expireAt.getTime() > 0 && now.getTime() >= link.expireAt.getTime();
+  return now.getTime() >= link.expireAt.getTime();
 }
 
 export interface ShortenCommand {

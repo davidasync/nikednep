@@ -1,9 +1,7 @@
 import {
   DEFAULT_TTL_SECONDS,
-  MAX_CODE_RETRIES,
   MAX_TTL_SECONDS,
   MAX_URL_LENGTH,
-  PURGE_BATCH,
   isExpired,
   type ShortenCommand,
   type ShortenResult,
@@ -11,7 +9,6 @@ import {
 import {
   ErrConflict,
   ErrExpired,
-  ErrGenerateCode,
   ErrInvalidCode,
   ErrInvalidTTL,
   ErrInvalidURL,
@@ -29,8 +26,6 @@ const RESERVED_CODES = new Set(["api", "health"]);
 export interface Service {
   shorten(cmd: ShortenCommand): Promise<ShortenResult>;
   resolve(code: string): Promise<string>;
-  /** Removes links whose TTL has run out. Returns how many went. */
-  purgeExpired(): Promise<number>;
 }
 
 export function newService(
@@ -64,21 +59,33 @@ export function newService(
       if (link === null) {
         throw ErrNotFound();
       }
+      // The store may still be holding a link past its expiry — KV cannot expire
+      // a key less than a minute out — so this check, not the store, is what
+      // decides a link is dead.
       if (isExpired(link, clock.now())) {
         throw ErrExpired();
       }
       return link.url;
     },
-
-    async purgeExpired(): Promise<number> {
-      // Expiry is only ever checked on read, so without this the rows linger
-      // and hold storage indefinitely. Nothing else reclaims them.
-      const purged = await links.deleteExpired(clock.now(), PURGE_BATCH);
-      return purged.length;
-    },
   };
 }
 
+/**
+ * A generated code is not checked for collisions, deliberately. The store caches
+ * the fact that a key was absent, so reading a code just before writing it makes
+ * the new link briefly unreadable in the region that created it — the one place a
+ * shortener must never fail, since people click the link they just made. Not
+ * reading is what keeps the create-then-click path working.
+ *
+ * What that costs: a collision silently overwrites instead of retrying. Seven
+ * characters over a 62-character alphabet is 3.5e12 codes, so at this corpus size
+ * the odds are on the order of one in a hundred thousand. A guaranteed 404 on
+ * every new link is the worse trade.
+ *
+ * A requested code still has to be checked, because rejecting duplicates is the
+ * point of asking for one. That read caches a miss and so carries the window;
+ * a custom link may 404 briefly where it was created.
+ */
 async function assignCode(
   links: LinkRepository,
   codes: CodeGenerator,
@@ -86,17 +93,11 @@ async function assignCode(
   now: Date,
 ): Promise<string> {
   if (requested === "") {
-    for (let i = 0; i < MAX_CODE_RETRIES; i++) {
-      const code = codes.next();
-      if (RESERVED_CODES.has(code.toLowerCase())) {
-        continue;
-      }
-      const existing = await links.get(code);
-      if (existing === null || isExpired(existing, now)) {
-        return code;
-      }
+    let code = codes.next();
+    while (RESERVED_CODES.has(code.toLowerCase())) {
+      code = codes.next();
     }
-    throw ErrGenerateCode();
+    return code;
   }
 
   validateCustomCode(requested);
