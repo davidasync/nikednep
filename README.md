@@ -3,6 +3,11 @@
 **API-only URL shortener on Cloudflare Workers.** `POST` a URL, get a short path back.
 `GET` that path, get a `302` to the original. That is the whole product.
 
+The name is `pendekin` backwards — Indonesian for "shorten it", in the casual register
+you would use with a friend rather than the formal *perpendek*. Fittingly, `pendekin` →
+`nikednep` is itself a short, opaque, reversible encoding of something meaningful, which
+is exactly what a short code is.
+
 ![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)
 ![Hono](https://img.shields.io/badge/Hono-4-E36002?logo=hono&logoColor=white)
@@ -15,14 +20,6 @@
 | **Storage** | Workers KV, and nothing else — no database, no schema, no migrations |
 | **Cost** | Nothing. Everything used here sits inside Cloudflare's free tier |
 | **Surface** | No UI, no login — the three endpoints below are all of it |
-
-## Why "nikednep"
-
-`pendekin` backwards — Indonesian for "shorten it", in the casual register you would use
-with a friend rather than the formal *perpendek*.
-
-The name also does its own job: `pendekin` → `nikednep` is a short, opaque, reversible
-encoding of something meaningful, which is exactly what a short code is.
 
 ## Quick start
 
