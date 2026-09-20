@@ -28,7 +28,7 @@ src/
   adapter/clock/
   adapter/nanoid/
   app/http/                 router, handlers, JSON DTOs
-migrations/                 0001 links, 0003 expiry index, 0004 drops 0002's counter
+migrations/0001_init.sql    links table + expiry index
 wrangler.toml.example       template; copy to wrangler.toml and fill in ids
 terraform/                  D1 + KV as code (optional; script stays on wrangler)
 ```
@@ -157,8 +157,7 @@ seek:
 SEARCH links USING INDEX idx_links_expire_at (expire_at>? AND expire_at<?)
 ```
 
-The delete triggers from `0002` keep the counter right, so the cap reflects only
-live links. The purge deliberately does not touch KV: those entries have already
+The purge deliberately does not touch KV: those entries have already
 expired on their own TTL, and deleting them would spend the 1,000/day free write
 budget on no-ops. Cron Triggers are free (5 per account on the free plan).
 
@@ -177,8 +176,9 @@ links expire, the purge reclaims them, and the table settles at roughly the
 creation rate times the average TTL.
 
 Dropping the cap removed its whole supporting cast — `count()`, `deleteOldest()`,
-and the trigger-maintained counter table that existed only to make the cap check
-cheap. `0004` drops what `0002` created.
+and a trigger-maintained counter table that existed only to make the cap check
+cheap. `created_at` survives as metadata but is deliberately unindexed, since
+nothing orders or filters by it once FIFO eviction is gone.
 
 ## Bindings
 
