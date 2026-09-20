@@ -80,6 +80,16 @@ Content-Type: application/json
 | `code` | no | 3–32 letters or digits. Omit it to get a 7-character nanoid. `api` and `health` are reserved |
 | `ttlSeconds` | no | default **604800** (7 days), max **31536000** (1 year). Below 60 is accepted but effectively becomes 60 — see [Expiry](#expiry) |
 
+### Browser callers
+
+`POST /api/shorten` sends CORS headers for an allowlist of origins, set as the
+`ALLOWED_ORIGINS` var in `wrangler.toml`, a comma-separated list. Unset allows no
+browser origin at all. A browser on any other origin is blocked at the preflight;
+curl and other non-browser clients are unaffected, because CORS is enforced by the
+browser and never here.
+
+`GET /:code` needs nothing: it is a redirect the browser navigates to, not a fetch.
+
 ### Errors
 
 Every error responds with `{ "error": "<message>" }`.

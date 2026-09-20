@@ -6,6 +6,12 @@ compatibility_date = "2026-09-01"
 # to Cloudflare and uncomment:
 # routes = [{ pattern = "nkd.example.com", custom_domain = true }]
 
+# Origins a browser may call `POST /api/shorten` from, comma-separated. Unset
+# allows no browser origin at all. Not a secret — it is public in the response
+# headers — so it lives here rather than in `wrangler secret`.
+[vars]
+ALLOWED_ORIGINS = "https://davidasync.github.io,https://davidasync.is-a.dev,http://localhost:3000,http://127.0.0.1:3000"
+
 # The only store. KV expires keys itself, so there is no schema and no sweep.
 # Create with: wrangler kv namespace create LINKS
 [[kv_namespaces]]
