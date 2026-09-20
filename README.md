@@ -47,27 +47,35 @@ code and hands it back; it decides nothing about validity.
 `url` must be at most **8192** characters; longer returns `414`.
 
 `ttlSeconds` optional: default **604800** (7 days), max **31536000** (1 year).
+Values below 60 are accepted but effectively become 60 — see [Expiry](#expiry).
 
 Rate limit: **20 creates per IP per minute**, via Cloudflare's rate limiting binding.
 
 Errors: `400` bad input, `409` `{ "error": "code already exists" }`, `414` url too long,
-`429` `{ "error": "rate limited" }`, `404` `{ "error": "not found" }` or
-`{ "error": "expired" }`, `503` `{ "error": "could not store link, try again later" }`
-when the store refuses a write.
+`429` `{ "error": "rate limited" }`, `404` `{ "error": "not found" }`,
+`503` `{ "error": "could not store link, try again later" }` when the store refuses a write.
 
 ## Expiry
 
-KV deletes keys on its own, so there is no sweep, no cron and no index — the whole
-cleanup layer that a SQL store would need does not exist here.
+KV deletes keys on its own, and that is the whole mechanism. Nothing re-reads
+`expireAt`: a link resolves for exactly as long as KV keeps its key, and 404s once
+KV drops it. There is no sweep, no cron and no index — none of the cleanup a SQL
+store would need exists here.
 
-KV will not accept an expiry less than 60 seconds out, so a link with a shorter TTL is
-stored for 60 seconds anyway and simply reads as expired for the remainder. That works
-because **KV's expiry is a garbage collector, not an access check**: the core compares
-`expireAt` on every read and is the only thing that decides a link is dead. A link can
-therefore be physically present and still correctly answer `404 expired`.
+The cost is that KV's limits become the link's limits.
 
-The same split covers KV's deletion lag, its edge cache, and clock skew — all of which
-can hand back a key slightly past its expiry.
+**KV will not accept an expiry less than 60 seconds out**, so a shorter TTL is
+rounded up and the link keeps working for the full minute — outliving the
+`expireAt` returned when it was created. `ttlSeconds: 2` reports a 2-second expiry
+and resolves for about 60. Treat 60 seconds as the real minimum.
+
+Deletion is also not instant. Cloudflare only says a key "may take some time to be
+deleted from various points of the network," and an already-read value can stay in
+an edge cache for its `cacheTtl`. So a link can outlive its stated expiry by more
+than the rounding alone explains.
+
+In exchange, an expired code frees up on its own: once KV drops the key, that code
+reads as available and can be claimed again.
 
 ## Consistency
 

@@ -18,7 +18,6 @@ export type ErrorKind =
   | "reserved_code"
   | "conflict"
   | "not_found"
-  | "expired"
   | "rate_limited"
   | "storage_unavailable";
 
@@ -33,7 +32,6 @@ export const ErrInvalidCode = () =>
 export const ErrReservedCode = () => new ShortenerError("reserved_code", "code is reserved");
 export const ErrConflict = () => new ShortenerError("conflict", "code already exists");
 export const ErrNotFound = () => new ShortenerError("not_found", "not found");
-export const ErrExpired = () => new ShortenerError("expired", "expired");
 export const ErrRateLimited = () => new ShortenerError("rate_limited", "rate limited");
 /** The store refused the write, so the link does not exist. Distinct from a bug:
  * the daily write quota running out is the expected cause, and it resets. */

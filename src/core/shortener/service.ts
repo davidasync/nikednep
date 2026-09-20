@@ -2,13 +2,11 @@ import {
   DEFAULT_TTL_SECONDS,
   MAX_TTL_SECONDS,
   MAX_URL_LENGTH,
-  isExpired,
   type ShortenCommand,
   type ShortenResult,
 } from "./entity";
 import {
   ErrConflict,
-  ErrExpired,
   ErrInvalidCode,
   ErrInvalidTTL,
   ErrInvalidURL,
@@ -46,7 +44,7 @@ export function newService(
       const now = clock.now();
       const expireAt = new Date(now.getTime() + ttlMs);
 
-      const code = await assignCode(links, codes, cmd.code, now);
+      const code = await assignCode(links, codes, cmd.code);
 
       await links.put({ code, url: dest, createdAt: now, expireAt });
 
@@ -59,12 +57,8 @@ export function newService(
       if (link === null) {
         throw ErrNotFound();
       }
-      // The store may still be holding a link past its expiry — KV cannot expire
-      // a key less than a minute out — so this check, not the store, is what
-      // decides a link is dead.
-      if (isExpired(link, clock.now())) {
-        throw ErrExpired();
-      }
+      // Expiry is KV's job alone: a key is gone when KV drops it, and until then
+      // the link resolves. Nothing here re-checks expireAt.
       return link.url;
     },
   };
@@ -90,7 +84,6 @@ async function assignCode(
   links: LinkRepository,
   codes: CodeGenerator,
   requested: string,
-  now: Date,
 ): Promise<string> {
   if (requested === "") {
     let code = codes.next();
@@ -102,8 +95,10 @@ async function assignCode(
 
   validateCustomCode(requested);
 
+  // A code is taken for exactly as long as KV holds it. An expired link has
+  // already been dropped, so its code reads as free without any check here.
   const existing = await links.get(requested);
-  if (existing === null || isExpired(existing, now)) {
+  if (existing === null) {
     return requested;
   }
   throw ErrConflict();

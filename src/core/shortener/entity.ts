@@ -14,16 +14,6 @@ export interface Link {
   expireAt: Date;
 }
 
-/**
- * Every link has a real expiry. There is deliberately no "never expires"
- * sentinel: KV cannot represent one — a key written without a TTL would outlive
- * the store's own cleanup — and no API path could ever produce it, since
- * resolveTTL demands a positive TTL. A sentinel the only adapter cannot express
- * is worse than no sentinel at all.
- */
-export function isExpired(link: Link, now: Date): boolean {
-  return now.getTime() >= link.expireAt.getTime();
-}
 
 export interface ShortenCommand {
   url: string;

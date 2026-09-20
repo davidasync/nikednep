@@ -57,11 +57,10 @@ export function newRepository(kv: KVNamespace): LinkRepository {
 }
 
 /**
- * A relational schema used to guarantee this shape; KV guarantees nothing, and
- * hands back whatever JSON is under the key. Validating here matters more than it
- * looks: an absent expireAt would become `new Date(undefined)`, whose getTime()
- * is NaN, and every comparison against NaN is false — so isExpired would answer
- * "not expired" and the link would redirect to `undefined` forever.
+ * A relational schema used to guarantee this shape; KV guarantees nothing and
+ * hands back whatever JSON is under the key, so a value written by a different
+ * version — or by hand — would otherwise flow straight through as a redirect to
+ * `undefined`. Rejecting it here is what keeps that a clean 404.
  */
 function decode(code: string, value: unknown): Link | null {
   if (typeof value !== "object" || value === null) {
@@ -83,17 +82,17 @@ function decode(code: string, value: unknown): Link | null {
 }
 
 /**
- * KV's expiry is a cleanup mechanism, not the authority on whether a link is
- * still valid — the core decides that by comparing expireAt on read.
+ * KV is the only thing that expires a link: nothing re-checks expireAt on read,
+ * so a key lives exactly as long as KV keeps it.
  *
- * That separation is what lets a sub-minute TTL work at all. KV rejects
- * anything under 60s, so a 30 second link is stored for 60 and simply reads as
- * expired for its final 30. Rounding up keeps the key alive slightly too long,
- * which is harmless; refusing to store it would lose the link outright.
+ * That makes the 60s floor visible in behaviour. KV refuses any expiry nearer
+ * than a minute, so a link asking for less than that is stored for 60 seconds
+ * and keeps resolving for the whole minute, outliving the expireAt reported when
+ * it was created. Accepted: rounding up keeps short-lived links working, where
+ * refusing the write would lose them outright.
  *
- * The upper clamp is belt and braces — resolveTTL already caps TTLs at a year,
- * so nothing should reach this — but expirationTtl is a 32-bit field and an
- * overflow here would throw on write rather than fail quietly.
+ * The upper clamp is belt and braces — resolveTTL already caps TTLs at a year —
+ * but expirationTtl is a 32-bit field and an overflow would throw on write.
  */
 function kvTtlSeconds(link: Link): number {
   const remaining = Math.floor((link.expireAt.getTime() - Date.now()) / 1000);

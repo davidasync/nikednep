@@ -13,7 +13,6 @@ const STATUS_BY_KIND: Record<ErrorKind, 400 | 404 | 409 | 414 | 429 | 503> = {
   reserved_code: 400,
   conflict: 409,
   not_found: 404,
-  expired: 404,
   rate_limited: 429,
   storage_unavailable: 503,
 };
