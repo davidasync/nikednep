@@ -5,7 +5,6 @@ import type { LinkRepository } from "../../core/shortener/ports";
 /** The stored value. `code` is the KV key, so it is not repeated here. */
 interface StoredLink {
   url: string;
-  createdAt: number;
   expireAt: number;
 }
 
@@ -38,7 +37,6 @@ export function newRepository(kv: KVNamespace): LinkRepository {
     async put(link: Link): Promise<void> {
       const value: StoredLink = {
         url: link.url,
-        createdAt: link.createdAt.getTime(),
         expireAt: link.expireAt.getTime(),
       };
       try {
@@ -66,17 +64,16 @@ function decode(code: string, value: unknown): Link | null {
   if (typeof value !== "object" || value === null) {
     return null;
   }
-  const { url, createdAt, expireAt } = value as Partial<StoredLink>;
+  const { url, expireAt } = value as Partial<StoredLink>;
   if (typeof url !== "string" || url === "") {
     return null;
   }
-  if (!Number.isFinite(expireAt) || !Number.isFinite(createdAt)) {
+  if (!Number.isFinite(expireAt)) {
     return null;
   }
   return {
     code,
     url,
-    createdAt: new Date(createdAt as number),
     expireAt: new Date(expireAt as number),
   };
 }

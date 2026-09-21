@@ -10,7 +10,6 @@ export const GENERATED_CODE_LEN = 7;
 export interface Link {
   code: string;
   url: string;
-  createdAt: Date;
   expireAt: Date;
 }
 

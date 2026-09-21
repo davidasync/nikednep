@@ -46,7 +46,7 @@ export function newService(
 
       const code = await assignCode(links, codes, cmd.code);
 
-      await links.put({ code, url: dest, createdAt: now, expireAt });
+      await links.put({ code, url: dest, expireAt });
 
       const scheme = cmd.scheme || "http";
       return { code, shortUrl: `${scheme}://${cmd.host}/${code}`, expireAt };
